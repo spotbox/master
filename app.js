@@ -6,10 +6,10 @@ var App = function(){};
 App.prototype.config = require('./config.js');
 App.prototype.wpi = require('wiring-pi');
 App.prototype.mfrc522 = require("MFRC522-node");
-App.prototype.NCMB = require("ncmb");
 App.prototype.Slave = require('./slave.js');
+App.prototype.DB = require('./db.js');
 
-App.prototype.ncmb = null;
+App.prototype.db = null;
 App.prototype.slaveList = [{uid:'146,54,42,59',device:new App.prototype.Slave()}];
 
 //初期化
@@ -17,7 +17,7 @@ App.prototype.init = function(){
     var _this = this;
 
     //NCMBとの接続
-    this.ncmb = new App.prototype.NCMB(this.config.NCMB_APPLICATION_KEY,this.config.NCMB_CLIENT_KEY);
+    this.db = new App.prototype.DB(this.config);
 
     //GPIO初期化
     this.wpi.wiringPiSetupGpio();
@@ -27,8 +27,28 @@ App.prototype.init = function(){
     this.setStatusLed(false);
 
     //I2C デバイス
+    var SlaveSensorCallback = function(slave){
+      this.slave = slave;
+      this.onRead = function(data){
+        console.log('onRead');
+        console.log(data);
+        //リードスイッチが ON されたら自動で施錠する
+        if(data.reedSwitch == 1){
+          //施錠
+          this.slave.lockingOperation(false);
+          //ステータス LEDを ON する
+          _this.setStatusLed(true);
+        }
+
+        //TODO:サーバにデータを登録する
+      };
+    };
     var slave1 = this.slaveList[0].device;
     slave1.init(this.wpi,this.config.SLAVE_I2C_ADDR_1);
+    var slave1Callback = new SlaveSensorCallback(slave1);
+    slave1.setOnSensor(slave1Callback);
+    //起動直後は施錠状態にする
+    slave1.lockingOperation(false);
 
     //RFIDの UID取得
     var mfrc522Callback = function(){
@@ -45,12 +65,6 @@ App.prototype.init = function(){
           //TODO: サーバーの 利用登録済み uid を確認して 一致していた場合 解錠 する
           //解錠
           slave1.device.lockingOperation(true);
-          //TODO: リードスイッチが ON されたら自動で施錠する
-          //TODO: リードスイッチがないので仮実装 3秒後に自動で施錠
-          setTimeout(function(){
-            //施錠
-            slave1.device.lockingOperation(false);
-          },3*1000);
         }
 
         //ステータス LEDを ON する
