@@ -10,7 +10,7 @@ DB.prototype.config = null;
 */
 DB.prototype.init = function(config){
   this.config = config;
-  this.ncmb = new App.prototype.NCMB(this.config.NCMB_APPLICATION_KEY,this.config.NCMB_CLIENT_KEY);
+  this.ncmb = new DB.prototype.NCMB(this.config.NCMB_APPLICATION_KEY,this.config.NCMB_CLIENT_KEY);
 
   //deviceRegist
   this.deviceRegist();
